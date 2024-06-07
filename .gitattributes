@@ -1,0 +1,21 @@
+# vendored
+CEZ/** linguist-vendored
+include/** linguist-vendored
+vendor/** linguist-vendored
+.env.example linguist-vendored
+
+# documentation
+*.md linguist-documentation
+*.png linguist-documentation
+
+# C#
+*.cs linguist-language=C#
+
+# Shell
+*.sh linguist-language=Shell
+
+# Dockerfile
+Dockerfile linguist-language=Dockerfile
+
+# Makefile
+Makefile linguist-language=Makefile
