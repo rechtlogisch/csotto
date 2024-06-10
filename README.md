@@ -66,7 +66,7 @@ cd csotto
 ./get-test-cez-certificate.sh
 
 # Build with dotnet
-donet build
+dotnet build
 
 # Run `csotto`, provide objectUuid with -u option, DYLD_LIBRARY_PATH pointing to Otto library and your DEVELOPER_ID inline
 DYLD_LIBRARY_PATH="./vendor" DEVELOPER_ID="_____" dotnet run -u 2b884e20-779d-4094-a1de-8304a6fc00c9
