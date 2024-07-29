@@ -1,5 +1,5 @@
 # vendored
-CEZ/** linguist-vendored
+certificate/** linguist-vendored
 include/** linguist-vendored
 vendor/** linguist-vendored
 .env.example linguist-vendored

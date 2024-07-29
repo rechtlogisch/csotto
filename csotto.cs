@@ -88,7 +88,7 @@ internal class Csotto : IDisposable
         if (statusCodeDownloadContinue != OttoStatusCode.OTTO_OK)
         {
             File.Delete(filepath);
-            return Error("Error occurred while in download loop. Check otto.log for details.", statusCodeDownloadContinue);
+            return DownloadError(statusCodeDownloadContinue);
         }
 
         Console.WriteLine("[INFO]  Downloaded content saved in: " + filepath);
@@ -98,8 +98,19 @@ internal class Csotto : IDisposable
     private static int Error(string message, OttoStatusCode code)
     {
         Console.WriteLine("[ERROR] " + message);
-        Console.WriteLine("[CODE]  " + code);
+        Console.WriteLine("[CODE]  " + (int)code + " (" + code + ")");
         return (int)code;
+    }
+
+    private static int DownloadError(OttoStatusCode code)
+    {
+        string message = code switch
+        {
+            OttoStatusCode.OTTO_TRANSFER_UNAUTHORIZED => "The client is not allowed to use the API.",
+            OttoStatusCode.OTTO_TRANSFER_NOT_FOUND => "The OTTER server did not find the object.",
+            _ => "Error occurred while downloading. Check otto.log for details."
+        };
+        return Error(message, code);
     }
 
     ~Csotto()
@@ -214,7 +225,9 @@ internal class Csotto : IDisposable
 public enum OttoStatusCode
 {
     OTTO_OK = 0,
-    OTTO_UNBEKANNTER_FEHLER = 610401002, // @TODO: set correct status code when published
+    OTTO_UNBEKANNTER_FEHLER = 610401002,
+    OTTO_TRANSFER_UNAUTHORIZED = 610403007,
+    OTTO_TRANSFER_NOT_FOUND = 610403008,
 }
 
 public enum CsottoReturnCode
@@ -306,7 +319,7 @@ internal static class Program
             return (int)CsottoReturnCode.DEVELOPER_ID_MISSING;
         }
 
-        string pathCertificate = Environment.GetEnvironmentVariable("PATH_CERTIFICATE") ?? "CEZ";
+        string pathCertificate = Environment.GetEnvironmentVariable("PATH_CERTIFICATE") ?? "certificate/test-softorg-pse.pfx";
         string pathLog = Environment.GetEnvironmentVariable("PATH_LOG") ?? ".";
 
         Csotto csotto = new Csotto(pathLog, pathCertificate, certificatePassword);

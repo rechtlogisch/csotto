@@ -2,7 +2,7 @@ ENV_FILE ?= .env
 image := rechtlogisch/csotto
 
 docker-build:
-	docker build \
+	@docker build \
 		--platform linux/amd64 \
 		-t $(image) \
 		.
