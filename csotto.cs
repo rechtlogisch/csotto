@@ -4,7 +4,28 @@ using System.Runtime.InteropServices;
 
 namespace csotto;
 
-internal class Csotto : IDisposable
+internal static class Common
+{
+    public static int Error(string message, OttoStatusCode code)
+    {
+        Console.WriteLine("[ERROR] " + message);
+        Console.WriteLine("[CODE]  " + (int)code + " (" + code + ")");
+        return (int)code;
+    }
+
+    public static int DownloadError(OttoStatusCode code)
+    {
+        string message = code switch
+        {
+            OttoStatusCode.OTTO_TRANSFER_UNAUTHORIZED => "The client is not allowed to use the API.",
+            OttoStatusCode.OTTO_TRANSFER_NOT_FOUND => "The OTTER server did not find the object.",
+            _ => "Error occurred while downloading. Check otto.log for details."
+        };
+        return Error(message, code);
+    }
+}
+
+internal class CsottoBlockwise : IDisposable
 {
     private readonly IntPtr instance;
     private readonly IntPtr certificateHandle;
@@ -13,20 +34,20 @@ internal class Csotto : IDisposable
 
     private bool disposed;
 
-    public Csotto(string pathLog, string pathCertificate, string certificatePassword)
+    public CsottoBlockwise(string pathLog, string pathCertificate, string certificatePassword)
     {
         // Create instance
-        OttoStatusCode statusCodeInstanceCreate = OttoInstanzErzeugen(pathLog, IntPtr.Zero, IntPtr.Zero, out instance);
+        OttoStatusCode statusCodeInstanceCreate = Native.OttoInstanzErzeugen(pathLog, IntPtr.Zero, IntPtr.Zero, out instance);
         if (statusCodeInstanceCreate != OttoStatusCode.OTTO_OK)
         {
-            Error("Could not create an Otto instance. Check otto.log for details.", statusCodeInstanceCreate);
+            Common.Error("Could not create an Otto instance. Check otto.log for details.", statusCodeInstanceCreate);
         }
 
         // Open certificate
-        OttoStatusCode statusCodeCertificateOpen = OttoZertifikatOeffnen(instance, pathCertificate, certificatePassword, out certificateHandle);
+        OttoStatusCode statusCodeCertificateOpen = Native.OttoZertifikatOeffnen(instance, pathCertificate, certificatePassword, out certificateHandle);
         if (statusCodeCertificateOpen != OttoStatusCode.OTTO_OK)
         {
-            Error("Could not open certificate: " + pathCertificate, statusCodeCertificateOpen);
+            Common.Error("Could not open certificate: " + pathCertificate, statusCodeCertificateOpen);
         }
         Console.WriteLine("[INFO]  Using certificate path: " + pathCertificate);
     }
@@ -34,17 +55,17 @@ internal class Csotto : IDisposable
     public int Workflow(string objectUuid, string developerId, string fileExtension, string pathDownload)
     {
         // Start download
-        OttoStatusCode statusCodeDownloadStart = OttoEmpfangBeginnen(instance, objectUuid, certificateHandle, developerId, out downloadHandle);
+        OttoStatusCode statusCodeDownloadStart = Native.OttoEmpfangBeginnen(instance, objectUuid, certificateHandle, developerId, out downloadHandle);
         if (statusCodeDownloadStart != OttoStatusCode.OTTO_OK)
         {
-            return Error("Could not start download. Check otto.log", statusCodeDownloadStart);
+            return Common.Error("Could not start download. Check otto.log", statusCodeDownloadStart);
         }
 
         // Create content buffer
-        OttoStatusCode statusCodeContentHandleCreate = OttoRueckgabepufferErzeugen(instance, out contentHandle);
+        OttoStatusCode statusCodeContentHandleCreate = Native.OttoRueckgabepufferErzeugen(instance, out contentHandle);
         if (statusCodeContentHandleCreate != OttoStatusCode.OTTO_OK)
         {
-            return Error("Could not create handle for content.", statusCodeContentHandleCreate);
+            return Common.Error("Could not create handle for content.", statusCodeContentHandleCreate);
         }
 
         string filepath = Path.Combine(pathDownload, objectUuid + "." + fileExtension);
@@ -62,24 +83,24 @@ internal class Csotto : IDisposable
         }
 
         // Continue download
-        OttoStatusCode statusCodeDownloadContinue = OttoStatusCode.OTTO_UNBEKANNTER_FEHLER;
+        OttoStatusCode statusCodeDownloadContinue;
         do
         {
-            statusCodeDownloadContinue = OttoEmpfangFortsetzen(downloadHandle, contentHandle);
+            statusCodeDownloadContinue = Native.OttoEmpfangFortsetzen(downloadHandle, contentHandle);
             if (statusCodeDownloadContinue != OttoStatusCode.OTTO_OK)
             {
                 break;
             }
 
-            ulong contentSize = OttoRueckgabepufferGroesse(contentHandle);
+            ulong contentSize = Native.OttoRueckgabepufferGroesse(contentHandle);
             if (contentSize <= 0)
             {
                 break;
             }
             
-            Console.WriteLine("[INFO]  Downloaded: " + contentSize + " bytes");
+            Console.WriteLine("[INFO]  Downloaded: " + contentSize + " Bytes");
             byte[] contentBlock = new byte[contentSize];
-            Marshal.Copy(OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
+            Marshal.Copy(Native.OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
             file.Write(contentBlock, 0, (int)contentSize);
         } while (true);
 
@@ -88,32 +109,14 @@ internal class Csotto : IDisposable
         if (statusCodeDownloadContinue != OttoStatusCode.OTTO_OK)
         {
             File.Delete(filepath);
-            return DownloadError(statusCodeDownloadContinue);
+            return Common.DownloadError(statusCodeDownloadContinue);
         }
 
         Console.WriteLine("[INFO]  Downloaded content saved in: " + filepath);
         return (int)CsottoReturnCode.OK;
     }
 
-    private static int Error(string message, OttoStatusCode code)
-    {
-        Console.WriteLine("[ERROR] " + message);
-        Console.WriteLine("[CODE]  " + (int)code + " (" + code + ")");
-        return (int)code;
-    }
-
-    private static int DownloadError(OttoStatusCode code)
-    {
-        string message = code switch
-        {
-            OttoStatusCode.OTTO_TRANSFER_UNAUTHORIZED => "The client is not allowed to use the API.",
-            OttoStatusCode.OTTO_TRANSFER_NOT_FOUND => "The OTTER server did not find the object.",
-            _ => "Error occurred while downloading. Check otto.log for details."
-        };
-        return Error(message, code);
-    }
-
-    ~Csotto()
+    ~CsottoBlockwise()
     {
         Dispose();
     }
@@ -128,49 +131,169 @@ internal class Csotto : IDisposable
         // End download
         if (downloadHandle != IntPtr.Zero)
         {
-            OttoStatusCode statusCodeDownloadEnd = OttoEmpfangBeenden(downloadHandle);
+            OttoStatusCode statusCodeDownloadEnd = Native.OttoEmpfangBeenden(downloadHandle);
             if (statusCodeDownloadEnd != OttoStatusCode.OTTO_OK)
             {
-                Error("Could not end download.", statusCodeDownloadEnd);
+                Common.Error("Could not end download.", statusCodeDownloadEnd);
             }
         }
 
         // Close certificate
         if (certificateHandle != IntPtr.Zero)
         {
-            OttoStatusCode statusCodeCertificateClose = OttoZertifikatSchliessen(certificateHandle);
+            OttoStatusCode statusCodeCertificateClose = Native.OttoZertifikatSchliessen(certificateHandle);
             if (statusCodeCertificateClose != OttoStatusCode.OTTO_OK)
             {
-                Error("Could not close certificate handle", statusCodeCertificateClose);
+                Common.Error("Could not close certificate handle", statusCodeCertificateClose);
             }
         }
 
         // Release content buffer
         if (contentHandle != IntPtr.Zero)
         {
-            OttoStatusCode statusCodeContentRelease = OttoRueckgabepufferFreigeben(contentHandle);
+            OttoStatusCode statusCodeContentRelease = Native.OttoRueckgabepufferFreigeben(contentHandle);
             if (statusCodeContentRelease != OttoStatusCode.OTTO_OK)
             {
-                Error("Could not release content handle.", statusCodeContentRelease);
+                Common.Error("Could not release content handle.", statusCodeContentRelease);
             }
         }
 
         // Destroy instance
         if (instance != IntPtr.Zero)
         {
-            OttoStatusCode statusCodeInstanceDestroy = OttoInstanzFreigeben(instance);
+            OttoStatusCode statusCodeInstanceDestroy = Native.OttoInstanzFreigeben(instance);
             if (statusCodeInstanceDestroy != OttoStatusCode.OTTO_OK)
             {
-                Error("Could not destroy the Otto instance. Check otto.log for details.", statusCodeInstanceDestroy);
+                Common.Error("Could not destroy the Otto instance. Check otto.log for details.", statusCodeInstanceDestroy);
             }
         }
 
         disposed = true;
     }
+}
 
+internal class CsottoInMemory : IDisposable
+{
+    private readonly IntPtr instance;
+    private readonly IntPtr contentHandle;
+    private readonly string pathCertificate;
+    private readonly string certificatePassword;
+
+    private bool disposed;
+
+    public CsottoInMemory(string pathLog, string providedPathCertificate, string providedCertificatePassword)
+    {
+        // Create instance
+        OttoStatusCode statusCodeInstanceCreate =
+            Native.OttoInstanzErzeugen(pathLog, IntPtr.Zero, IntPtr.Zero, out instance);
+        if (statusCodeInstanceCreate != OttoStatusCode.OTTO_OK)
+        {
+            Common.Error("Could not create an Otto instance. Check otto.log for details.", statusCodeInstanceCreate);
+        }
+
+        // Create content buffer
+        OttoStatusCode statusCodeContentHandleCreate = Native.OttoRueckgabepufferErzeugen(instance, out contentHandle);
+        if (statusCodeContentHandleCreate != OttoStatusCode.OTTO_OK)
+        {
+            Common.Error("Could not create handle for content.", statusCodeContentHandleCreate);
+        }
+
+        pathCertificate = providedPathCertificate;
+        certificatePassword = providedCertificatePassword;
+    }
+
+    public int Workflow(string objectUuid, uint size, string developerId, string fileExtension, string pathDownload)
+    {
+        string filepath = Path.Combine(pathDownload, objectUuid + "." + fileExtension);
+        FileStream file;
+
+        try
+        {
+            file = File.Open(filepath, FileMode.Append, FileAccess.Write, FileShare.None);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Failed to open file: " + filepath);
+            Console.WriteLine("Exception: " + ex.Message);
+            return (int)CsottoReturnCode.OUTPUT_FILE_OPEN_FAILED;
+        }
+
+        Console.WriteLine("[INFO]  Using certificate path: " + pathCertificate);
+
+        OttoStatusCode statusCodeDownload = Native.OttoDatenAbholen(
+            instance,
+            objectUuid,
+            size,
+            pathCertificate,
+            certificatePassword,
+            developerId,
+            null,
+            contentHandle
+        );
+
+        if (statusCodeDownload != OttoStatusCode.OTTO_OK)
+        {
+            File.Delete(filepath);
+            file.Close();
+            return Common.DownloadError(statusCodeDownload);
+        }
+
+        ulong contentSize = Native.OttoRueckgabepufferGroesse(contentHandle);
+        if (contentSize > 0)
+        {
+            Console.WriteLine("[INFO]  Downloaded: " + contentSize + " bytes");
+            byte[] contentBlock = new byte[contentSize];
+            Marshal.Copy(Native.OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
+            file.Write(contentBlock, 0, (int)contentSize);
+            Console.WriteLine("[INFO]  Downloaded content saved in: " + filepath);
+        }
+
+        file.Close();
+
+        return (int)CsottoReturnCode.OK;
+    }
+
+    ~CsottoInMemory()
+    {
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        // Release content buffer
+        if (contentHandle != IntPtr.Zero)
+        {
+            OttoStatusCode statusCodeContentRelease = Native.OttoRueckgabepufferFreigeben(contentHandle);
+            if (statusCodeContentRelease != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error("Could not release content handle.", statusCodeContentRelease);
+            }
+        }
+
+        // Destroy instance
+        if (instance != IntPtr.Zero)
+        {
+            OttoStatusCode statusCodeInstanceDestroy = Native.OttoInstanzFreigeben(instance);
+            if (statusCodeInstanceDestroy != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error("Could not destroy the Otto instance. Check otto.log for details.", statusCodeInstanceDestroy);
+            }
+        }
+
+        disposed = true;
+    }
+}
+
+internal static class Native
+{
     [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
         ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoInstanzErzeugen(
+    public static extern OttoStatusCode OttoInstanzErzeugen(
         [MarshalAs(UnmanagedType.LPStr)] string logPfad,
         IntPtr logCallback,
         IntPtr logCallbackBenutzerdaten,
@@ -178,14 +301,14 @@ internal class Csotto : IDisposable
 
     [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
         ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoZertifikatOeffnen(
+    public static extern OttoStatusCode OttoZertifikatOeffnen(
         IntPtr instanz,
         [MarshalAs(UnmanagedType.LPStr)] string zertifikatsPfad,
         [MarshalAs(UnmanagedType.LPStr)] string zertifikatsPasswort,
         out IntPtr zertifikat);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoEmpfangBeginnen(
+    public static extern OttoStatusCode OttoEmpfangBeginnen(
         IntPtr instanz,
         [MarshalAs(UnmanagedType.LPStr)] string objektId,
         IntPtr zertifikat,
@@ -193,33 +316,44 @@ internal class Csotto : IDisposable
         out IntPtr empfang);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoRueckgabepufferErzeugen(
+    public static extern OttoStatusCode OttoRueckgabepufferErzeugen(
         IntPtr instanz,
         out IntPtr rueckgabepuffer);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern ulong OttoRueckgabepufferGroesse(IntPtr rueckgabepuffer);
+    public static extern ulong OttoRueckgabepufferGroesse(IntPtr rueckgabepuffer);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern IntPtr OttoRueckgabepufferInhalt(IntPtr rueckgabepuffer);
+    public static extern IntPtr OttoRueckgabepufferInhalt(IntPtr rueckgabepuffer);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoEmpfangFortsetzen(
+    public static extern OttoStatusCode OttoEmpfangFortsetzen(
         IntPtr empfang,
         IntPtr datenBlock);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoEmpfangBeenden(IntPtr empfang);
+    public static extern OttoStatusCode OttoEmpfangBeenden(IntPtr empfang);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoZertifikatSchliessen(IntPtr zertifikat);
+    public static extern OttoStatusCode OttoZertifikatSchliessen(IntPtr zertifikat);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoRueckgabepufferFreigeben(IntPtr rueckgabepuffer);
+    public static extern OttoStatusCode OttoRueckgabepufferFreigeben(IntPtr rueckgabepuffer);
 
     [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
         ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.StdCall)]
-    private static extern OttoStatusCode OttoInstanzFreigeben(IntPtr instanz);
+    public static extern OttoStatusCode OttoInstanzFreigeben(IntPtr instanz);
+    
+    [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
+    public static extern OttoStatusCode OttoDatenAbholen(
+        IntPtr instanz,
+        [MarshalAs(UnmanagedType.LPStr)] string objektId,
+        [MarshalAs(UnmanagedType.U4)] uint objektGroesse,
+        [MarshalAs(UnmanagedType.LPStr)] string zertifikatsPfad,
+        [MarshalAs(UnmanagedType.LPStr)] string zertifikatsPasswort,
+        [MarshalAs(UnmanagedType.LPStr)] string herstellerId,
+        [MarshalAs(UnmanagedType.LPStr)] string abholzertifikat,
+        IntPtr abholDaten);
 }
 
 public enum OttoStatusCode
@@ -249,6 +383,7 @@ internal static class Program
         {
             Console.Error.WriteLine("Usage:");
             Console.Error.WriteLine(" -u objectUuid\t\tUUID of object to download (mandatory)");
+            Console.Error.WriteLine(" -m size\t\tAllocate provided Bytes of memory and download object in-memory (optional, max: 10485760 Bytes), when not provided or exceeds max download blockwise");
             Console.Error.WriteLine(" -e extension\t\tSet filename extension of downloaded content [default: \"txt\"]");
             Console.Error.WriteLine(" -p password\t\tPassword for certificate [default: \"123456\"]");
             Console.Error.WriteLine(" -f\t\t\tForce file overwriting [default: false]");
@@ -256,6 +391,7 @@ internal static class Program
         }
 
         string objectUuid = null;
+        uint memorySizeAllocation = 0;
         string fileExtension = "txt";
         string certificatePassword = "123456";
         bool forceOverwrite = false;
@@ -266,6 +402,14 @@ internal static class Program
             {
                 case "-u":
                     objectUuid = args[++i];
+                    break;
+                case "-m":
+                    if (!int.TryParse(args[++i], out int parsedMemorySizeAllocation) || parsedMemorySizeAllocation <= 0)
+                    {
+                        Console.Error.WriteLine("Invalid memory size allocation. It must be an integer greater than 0.");
+                        return (int)CsottoReturnCode.UNSUPPORTED_ARGUMENT;
+                    }
+                    memorySizeAllocation = (uint)parsedMemorySizeAllocation;
                     break;
                 case "-e":
                     fileExtension = args[++i];
@@ -322,9 +466,21 @@ internal static class Program
         string pathCertificate = Environment.GetEnvironmentVariable("PATH_CERTIFICATE") ?? "certificate/test-softorg-pse.pfx";
         string pathLog = Environment.GetEnvironmentVariable("PATH_LOG") ?? ".";
 
-        Csotto csotto = new Csotto(pathLog, pathCertificate, certificatePassword);
-        int result = csotto.Workflow(objectUuid, developerId, fileExtension, pathDownload);
-        csotto.Dispose();
-        return result;
+        if (memorySizeAllocation is > 0 and <= 10485760)
+        {
+            Console.WriteLine("[INFO]  Using simplified in-memory data retrieval for objects smaller than 10485760 Bytes (10 MiB)");
+            CsottoInMemory csotto = new CsottoInMemory(pathLog, pathCertificate, certificatePassword);
+            int result = csotto.Workflow(objectUuid, memorySizeAllocation, developerId, fileExtension, pathDownload);
+            csotto.Dispose();
+            return result;
+        }
+        else
+        {
+            Console.WriteLine("[INFO]  Using blockwise data retrieval");
+            CsottoBlockwise csotto = new CsottoBlockwise(pathLog, pathCertificate, certificatePassword);
+            int result = csotto.Workflow(objectUuid, developerId, fileExtension, pathDownload);
+            csotto.Dispose();
+            return result;
+        }
     }
 }
