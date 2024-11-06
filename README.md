@@ -38,7 +38,7 @@ csotto -u e694eca1-7251-4629-a164-4634db811189 -e pdf # DivaBescheidESt
 ```
 
 > [!NOTE]  
-> The code and scripts have been tested so far only on Linux and macOS.
+> The code and scripts have been tested on Linux, macOS and Windows.
 
 > [!TIP]  
 > A list of object UUIDs is available with test certificates. You can get a list of them using `PostfachAnfrage` with the test certificate. The examples above are for `test-softorg-pse.pfx` and might be removed from the test instance after the time specified in the metadata.
@@ -68,7 +68,7 @@ make docker-build
 
 Build with a tool of your choice and set up the project accordingly. Just don't forget to place the Otto library where the build solution can find it. For example `PATH`, typical places where libraries are searched on your system or just place it next to the build executable. 
 
-Here is an example howto run `csotto` locally on macOS after installing [.NET 8.0](https://learn.microsoft.com/en-us/dotnet/core/install/macos).
+Here is an example howto run `csotto` locally on macOS after installing [.NET SDK 8.0](https://learn.microsoft.com/en-us/dotnet/core/install/macos).
 
 ```bash
 # Clone repository
