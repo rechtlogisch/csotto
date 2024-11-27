@@ -3,7 +3,7 @@
 All notable changes to `csotto` will be documented in this file.
 
 ## v1.2.1 - 2024-11-27
-- Tested and runnable with Otto 41.1.3
+- Tested and runnable with Otto 41.2.6
 - Adjustments in README
 
 **Full Changelog**: https://github.com/rechtlogisch/csotto/compare/v1.2.0...v1.2.1
