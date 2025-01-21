@@ -13,9 +13,9 @@ An example of the Otto library implementation in C#.
 
 In May 2024, ELSTER introduced a new library called Otto, designed for downloading objects from OTTER (Object Storage in ELSTER). ELSTER took this initiative because the existing solution had reached its limitations. Alongside Otto, a new version of Datenabholung v31 was also released.
 
-The current method of data retrieval using ERiC was replaced on the client-side with ERiC version 41.2 on November 25th, 2024, which supports solely Datenabholung v31. On the server-side, the transition will occur with the planned annual minimal version increase in mid-April 2025 (exact date to be announced in 2025). After this date, only ERiC version 41.2 or higher with Datenabholung v31 will be supported.
+The current method of data retrieval using ERiC was replaced on the client-side with ERiC version 41.2 in November 2024, which supports solely Datenabholung v31. On the server-side, the transition will occur with the planned annual minimal version increase on **April 28th, 2025**. After this date, only ERiC version 41.2 or higher with Datenabholung v31 will be supported.
 
-As a result, most software developers currently using ERiC Datenabholung will need to implement Otto in their production systems by April 2025.
+As a result, most software developers currently using ERiC Datenabholung will need to implement Otto in their production systems by the end of April 2025.
 
 This demo intends to simplify the transition and reduce implementation time.
 
