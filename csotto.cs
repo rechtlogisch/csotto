@@ -331,7 +331,7 @@ internal static class Native
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
     public static extern OttoStatusCode OttoProxyKonfigurationSetzen(
         IntPtr instanz,
-        OttoProxyKonfiguration proxyKonfiguration);
+        [MarshalAs(UnmanagedType.LPStruct)] OttoProxyKonfiguration proxyKonfiguration);
 
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
     public static extern OttoStatusCode OttoEmpfangBeginnen(
@@ -429,7 +429,6 @@ internal static class Program
             Console.Error.WriteLine(" -p password\t\tPassword for certificate [default: \"123456\"]");
             Console.Error.WriteLine(" -y proxy\t\tProxy URL for communucation with the OTTER server (optional, by default no proxy is being set within Otto)");
             Console.Error.WriteLine(" -f\t\t\tForce file overwriting [default: false]");
-            Console.Error.WriteLine(" -o\t\t\tSpecify Url of the proxy server Otto should use");
             return (int)CsottoReturnCode.TOO_FEW_ARGUMENTS;
         }
 
@@ -466,9 +465,6 @@ internal static class Program
                     break;
                 case "-f":
                     forceOverwrite = true;
-                    break;
-                case "-o":
-                    proxyUrl = args[++i];
                     break;
                 default:
                     Console.Error.WriteLine("Unsupported option: " + args[i]);
