@@ -44,9 +44,9 @@ internal class CsottoBlockwise : IDisposable
         }
 
         // Set proxy
-        if (proxyUrl != null)
+        if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { url = proxyUrl, version = 1 });
+            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
             if (statusCodeProxy != OttoStatusCode.OTTO_OK)
             {
                 Common.Error("Could not set proxy configuration. Check otto.log for details.", statusCodeProxy);
@@ -202,9 +202,9 @@ internal class CsottoInMemory : IDisposable
         }
 
         // Set proxy
-        if (proxyUrl != null)
+        if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { url = proxyUrl, version = 1 });
+            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
             if (statusCodeProxy != OttoStatusCode.OTTO_OK)
             {
                 Common.Error("Could not set proxy configuration. Check otto.log for details.", statusCodeProxy);
@@ -427,6 +427,7 @@ internal static class Program
             Console.Error.WriteLine(" -m size\t\tAllocate provided Bytes of memory and download object in-memory (optional, max: 10485760 Bytes), when not provided or exceeds max download blockwise");
             Console.Error.WriteLine(" -e extension\t\tSet filename extension of downloaded content [default: \"txt\"]");
             Console.Error.WriteLine(" -p password\t\tPassword for certificate [default: \"123456\"]");
+            Console.Error.WriteLine(" -y proxy\t\tProxy URL for communucation with the OTTER server (optional, by default no proxy is being set within Otto)");
             Console.Error.WriteLine(" -f\t\t\tForce file overwriting [default: false]");
             Console.Error.WriteLine(" -o\t\t\tSpecify Url of the proxy server Otto should use");
             return (int)CsottoReturnCode.TOO_FEW_ARGUMENTS;
@@ -460,6 +461,9 @@ internal static class Program
                 case "-p":
                     certificatePassword = args[++i];
                     break;
+                case "-y":
+                    proxyUrl = args[++i];
+                    break;
                 case "-f":
                     forceOverwrite = true;
                     break;
@@ -467,7 +471,7 @@ internal static class Program
                     proxyUrl = args[++i];
                     break;
                 default:
-                    Console.Error.WriteLine("Unsupported option: -" + args[i]);
+                    Console.Error.WriteLine("Unsupported option: " + args[i]);
                     return (int)CsottoReturnCode.UNSUPPORTED_ARGUMENT;
             }
         }
@@ -511,6 +515,10 @@ internal static class Program
 
         string pathCertificate = Environment.GetEnvironmentVariable("PATH_CERTIFICATE") ?? "certificate/test-softorg-pse.pfx";
         string pathLog = Environment.GetEnvironmentVariable("PATH_LOG") ?? ".";
+        if (string.IsNullOrEmpty(proxyUrl))
+        {
+            proxyUrl = Environment.GetEnvironmentVariable("PROXY_URL") ?? null;
+        }
 
         if (memorySizeAllocation is > 0 and <= 10485760)
         {
