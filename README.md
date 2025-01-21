@@ -27,6 +27,7 @@ This demo intends to simplify the transition and reduce implementation time.
   -m size               Allocate provided Bytes of memory and download object in-memory (optional, max: 10485760 Bytes), cf. Download modes
   -e extension          Set filename extension of downloaded content [default: "txt"]
   -p password           Password for certificate [default: "123456"]
+  -y proxy              Proxy URL for communucation with the OTTER server (optional, by default no proxy is being set within Otto)
   -f                    Force file overwriting [default: false]
 ```
 
@@ -51,7 +52,7 @@ You need the official ELSTER Otto library. Download the ERiC package >= v40 for 
 > The ERiC package, especially the included there libraries are subject to a separate license agreement (presented before download in the ELSTER developer area and included in the ERiC package itself).
 
 > [!TIP]  
-> Choose the right library for the platform you compile and run on. Recommended ERiC version to use: 41.2
+> Choose the right library for the platform you compile and run on. Recommended Otto version to use: 41.2 with eSigner 60.0.1.2
 
 ## Build with Docker
 

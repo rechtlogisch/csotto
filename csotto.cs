@@ -34,13 +34,23 @@ internal class CsottoBlockwise : IDisposable
 
     private bool disposed;
 
-    public CsottoBlockwise(string pathLog, string pathCertificate, string certificatePassword)
+    public CsottoBlockwise(string pathLog, string pathCertificate, string certificatePassword, string proxyUrl)
     {
         // Create instance
         OttoStatusCode statusCodeInstanceCreate = Native.OttoInstanzErzeugen(pathLog, IntPtr.Zero, IntPtr.Zero, out instance);
         if (statusCodeInstanceCreate != OttoStatusCode.OTTO_OK)
         {
             Common.Error("Could not create an Otto instance. Check otto.log for details.", statusCodeInstanceCreate);
+        }
+
+        // Set proxy
+        if (!string.IsNullOrEmpty(proxyUrl))
+        {
+            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
+            if (statusCodeProxy != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error("Could not set proxy configuration. Check otto.log for details.", statusCodeProxy);
+            }
         }
 
         // Open certificate
@@ -97,7 +107,7 @@ internal class CsottoBlockwise : IDisposable
             {
                 break;
             }
-            
+
             Console.WriteLine("[INFO]  Downloaded: " + contentSize + " Bytes");
             byte[] contentBlock = new byte[contentSize];
             Marshal.Copy(Native.OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
@@ -181,7 +191,7 @@ internal class CsottoInMemory : IDisposable
 
     private bool disposed;
 
-    public CsottoInMemory(string pathLog, string providedPathCertificate, string providedCertificatePassword)
+    public CsottoInMemory(string pathLog, string providedPathCertificate, string providedCertificatePassword, string proxyUrl)
     {
         // Create instance
         OttoStatusCode statusCodeInstanceCreate =
@@ -189,6 +199,16 @@ internal class CsottoInMemory : IDisposable
         if (statusCodeInstanceCreate != OttoStatusCode.OTTO_OK)
         {
             Common.Error("Could not create an Otto instance. Check otto.log for details.", statusCodeInstanceCreate);
+        }
+
+        // Set proxy
+        if (!string.IsNullOrEmpty(proxyUrl))
+        {
+            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
+            if (statusCodeProxy != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error("Could not set proxy configuration. Check otto.log for details.", statusCodeProxy);
+            }
         }
 
         // Create content buffer
@@ -307,6 +327,12 @@ internal static class Native
         [MarshalAs(UnmanagedType.LPStr)] string zertifikatsPasswort,
         out IntPtr zertifikat);
 
+
+    [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
+    public static extern OttoStatusCode OttoProxyKonfigurationSetzen(
+        IntPtr instanz,
+        [MarshalAs(UnmanagedType.LPStruct)] OttoProxyKonfiguration proxyKonfiguration);
+
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
     public static extern OttoStatusCode OttoEmpfangBeginnen(
         IntPtr instanz,
@@ -343,7 +369,7 @@ internal static class Native
     [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
         ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.StdCall)]
     public static extern OttoStatusCode OttoInstanzFreigeben(IntPtr instanz);
-    
+
     [DllImport("otto", CallingConvention = CallingConvention.StdCall)]
     public static extern OttoStatusCode OttoDatenAbholen(
         IntPtr instanz,
@@ -354,6 +380,21 @@ internal static class Native
         [MarshalAs(UnmanagedType.LPStr)] string herstellerId,
         [MarshalAs(UnmanagedType.LPStr)] string abholzertifikat,
         IntPtr abholDaten);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public class OttoProxyKonfiguration
+{
+    [MarshalAs(UnmanagedType.I4)]
+    public Int32 version;
+    [MarshalAs(UnmanagedType.LPStr)]
+    public string url;
+    [MarshalAs(UnmanagedType.LPStr)]
+    public string benutzerName;
+    [MarshalAs(UnmanagedType.LPStr)]
+    public string benutzerPassword;
+    [MarshalAs(UnmanagedType.LPStr)]
+    public string authenifizierungsMethode;
 }
 
 public enum OttoStatusCode
@@ -386,6 +427,7 @@ internal static class Program
             Console.Error.WriteLine(" -m size\t\tAllocate provided Bytes of memory and download object in-memory (optional, max: 10485760 Bytes), when not provided or exceeds max download blockwise");
             Console.Error.WriteLine(" -e extension\t\tSet filename extension of downloaded content [default: \"txt\"]");
             Console.Error.WriteLine(" -p password\t\tPassword for certificate [default: \"123456\"]");
+            Console.Error.WriteLine(" -y proxy\t\tProxy URL for communucation with the OTTER server (optional, by default no proxy is being set within Otto)");
             Console.Error.WriteLine(" -f\t\t\tForce file overwriting [default: false]");
             return (int)CsottoReturnCode.TOO_FEW_ARGUMENTS;
         }
@@ -395,6 +437,7 @@ internal static class Program
         string fileExtension = "txt";
         string certificatePassword = "123456";
         bool forceOverwrite = false;
+        string proxyUrl = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -417,11 +460,14 @@ internal static class Program
                 case "-p":
                     certificatePassword = args[++i];
                     break;
+                case "-y":
+                    proxyUrl = args[++i];
+                    break;
                 case "-f":
                     forceOverwrite = true;
                     break;
                 default:
-                    Console.Error.WriteLine("Unsupported option: -" + args[i]);
+                    Console.Error.WriteLine("Unsupported option: " + args[i]);
                     return (int)CsottoReturnCode.UNSUPPORTED_ARGUMENT;
             }
         }
@@ -465,11 +511,15 @@ internal static class Program
 
         string pathCertificate = Environment.GetEnvironmentVariable("PATH_CERTIFICATE") ?? "certificate/test-softorg-pse.pfx";
         string pathLog = Environment.GetEnvironmentVariable("PATH_LOG") ?? ".";
+        if (string.IsNullOrEmpty(proxyUrl))
+        {
+            proxyUrl = Environment.GetEnvironmentVariable("PROXY_URL") ?? null;
+        }
 
         if (memorySizeAllocation is > 0 and <= 10485760)
         {
             Console.WriteLine("[INFO]  Using simplified in-memory data retrieval for objects smaller than 10485760 Bytes (10 MiB)");
-            CsottoInMemory csotto = new CsottoInMemory(pathLog, pathCertificate, certificatePassword);
+            CsottoInMemory csotto = new CsottoInMemory(pathLog, pathCertificate, certificatePassword, proxyUrl);
             int result = csotto.Workflow(objectUuid, memorySizeAllocation, developerId, fileExtension, pathDownload);
             csotto.Dispose();
             return result;
@@ -477,7 +527,7 @@ internal static class Program
         else
         {
             Console.WriteLine("[INFO]  Using blockwise data retrieval");
-            CsottoBlockwise csotto = new CsottoBlockwise(pathLog, pathCertificate, certificatePassword);
+            CsottoBlockwise csotto = new CsottoBlockwise(pathLog, pathCertificate, certificatePassword, proxyUrl);
             int result = csotto.Workflow(objectUuid, developerId, fileExtension, pathDownload);
             csotto.Dispose();
             return result;
