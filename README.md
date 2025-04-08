@@ -13,9 +13,9 @@ An example of the Otto library implementation in C#.
 
 In May 2024, ELSTER introduced a new library called Otto, designed for downloading objects from OTTER (Object Storage in ELSTER). ELSTER took this initiative because the existing solution had reached its limitations. Alongside Otto, a new version of Datenabholung v31 was also released.
 
-The current method of data retrieval using ERiC was replaced on the client-side with ERiC version 41.2 in November 2024, which supports solely Datenabholung v31. On the server-side, the transition will occur with the planned annual minimal version increase on **April 28th, 2025**. After this date, only ERiC version 41.2 or higher with Datenabholung v31 will be supported.
+The current method of data retrieval using ERiC was replaced on the client-side with ERiC version 41.2 in November 2024, which supports solely Datenabholung v31. On the server-side, the transition will occur with the planned annual minimal version increase on **June 9th, 2025**. After this date, only ERiC version 41.2 or higher with Datenabholung v31 will be supported.
 
-As a result, most software developers currently using ERiC Datenabholung will need to implement Otto in their production systems by the end of April 2025.
+As a result, most software developers currently using ERiC Datenabholung will need to implement Otto in their production systems by the June 2025.
 
 This demo intends to simplify the transition and reduce implementation time.
 
@@ -52,7 +52,7 @@ You need the official ELSTER Otto library. Download the ERiC package >= v40 for 
 > The ERiC package, especially the included there libraries are subject to a separate license agreement (presented before download in the ELSTER developer area and included in the ERiC package itself).
 
 > [!TIP]  
-> Choose the right library for the platform you compile and run on. Recommended Otto version to use: 41.2 with eSigner 60.0.1.2
+> Choose the right library for the platform you compile and run on. Recommended Otto version to use: 41.5 with eSigner 62.0.0.5
 
 ## Build with Docker
 

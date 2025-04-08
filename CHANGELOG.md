@@ -2,6 +2,18 @@
 
 All notable changes to `csotto` will be documented in this file.
 
+## v1.2.3 - 2025-04-08
+- Add OttoHoleFehlertext (works only with Otto >= 41.4), remove DownloadError() and change Error()
+- Changed calling convention to Cdecl to support Otto on 32-Bit Windows systems
+- Tested and runnable with Otto 41.5 and eSigner 62.0.0.5
+- Adjustments in README
+
+## v1.2.2 - 2025-01-21
+- Add flag -y for setting a proxy url to use while communicating with the OTTER servers
+- Add PROXY_URL environment variable (-y overrides it)
+- Tested and runnable with eSigner 60.0.1.2 (published in ERiC 41.3, containing Otto 41.2)
+- Adjustments in README
+
 ## v1.2.1 - 2024-11-27
 - Tested and runnable with Otto 41.2.6
 - Adjustments in README
