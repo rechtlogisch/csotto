@@ -69,7 +69,7 @@ internal class CsottoBlockwise : IDisposable
                 "",
                 "proxy.url",
                 proxyUrl,
-                "Could not set Otto connect timeout. Check otto.log for details."
+                "Could not set Otto proxy URL. Check otto.log for details."
             );
         }
 
@@ -246,7 +246,7 @@ internal class CsottoInMemory : IDisposable
                 "",
                 "proxy.url",
                 proxyUrl,
-                "Could not set Otto connect timeout. Check otto.log for details."
+                "Could not set Otto proxy URL. Check otto.log for details."
             );
         }
 
