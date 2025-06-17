@@ -1,3 +1,4 @@
 *
 !.gitignore
+!otto.ini-dist
 !README.md

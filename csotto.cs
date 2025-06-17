@@ -19,6 +19,28 @@ internal static class Common
         Console.WriteLine("[CODE]  " + (int)code);
         return (int)code;
     }
+
+    public static void Configure(
+        IntPtr instance,
+        string envVariableName,
+        string settingName,
+        string settingValue = null,
+        string errorMessage = "Could not set Otto setting. Check otto.log for details.")
+    {
+        if (string.IsNullOrEmpty(settingValue))
+        {
+            settingValue = Environment.GetEnvironmentVariable(envVariableName);
+        }
+        
+        if (!string.IsNullOrEmpty(settingValue))
+        {
+            OttoStatusCode statusCode = Native.OttoEinstellungSetzen(instance, settingName, settingValue);
+            if (statusCode != OttoStatusCode.OTTO_OK)
+            {
+                Error(statusCode, errorMessage);
+            }
+        }
+    }
 }
 
 internal class CsottoBlockwise : IDisposable
@@ -39,15 +61,34 @@ internal class CsottoBlockwise : IDisposable
             Common.Error(statusCodeInstanceCreate, "Could not create an Otto instance. Check otto.log for details.");
         }
 
-        // Set proxy
+        // Set proxy URL
         if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
-            if (statusCodeProxy != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeProxy, "Could not set proxy configuration. Check otto.log for details.");
-            }
+            Common.Configure(
+                instance,
+                "",
+                "proxy.url",
+                proxyUrl,
+                "Could not set Otto proxy URL. Check otto.log for details."
+            );
         }
+
+        // Set timeouts, if provided in environment variables
+        Common.Configure(
+            instance,
+            "TIMEOUT_CONNECT",
+            "transfer.connect_timeout",
+            null,
+            "Could not set Otto connect timeout. Check otto.log for details."
+        );
+
+        Common.Configure(
+            instance,
+            "TIMEOUT_IDLE",
+            "transfer.idle_timeout",
+            null,
+            "Could not set Otto idle timeout. Check otto.log for details."
+        );
 
         // Open certificate
         OttoStatusCode statusCodeCertificateOpen = Native.OttoZertifikatOeffnen(instance, pathCertificate, certificatePassword, out certificateHandle);
@@ -197,15 +238,34 @@ internal class CsottoInMemory : IDisposable
             Common.Error(statusCodeInstanceCreate, "Could not create an Otto instance. Check otto.log for details.");
         }
 
-        // Set proxy
+        // Set proxy URL
         if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
-            if (statusCodeProxy != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeProxy, "Could not set proxy configuration. Check otto.log for details.");
-            }
+            Common.Configure(
+                instance,
+                "",
+                "proxy.url",
+                proxyUrl,
+                "Could not set Otto proxy URL. Check otto.log for details."
+            );
         }
+
+        // Set timeouts, if provided in environment variables
+        Common.Configure(
+            instance,
+            "TIMEOUT_CONNECT",
+            "transfer.connect_timeout",
+            null,
+            "Could not set Otto connect timeout. Check otto.log for details."
+        );
+
+        Common.Configure(
+            instance,
+            "TIMEOUT_IDLE",
+            "transfer.idle_timeout",
+            null,
+            "Could not set Otto idle timeout. Check otto.log for details."
+        );
 
         // Create content buffer
         OttoStatusCode statusCodeContentHandleCreate = Native.OttoRueckgabepufferErzeugen(instance, out contentHandle);
@@ -325,11 +385,6 @@ internal static class Native
 
 
     [DllImport("otto", CallingConvention = CallingConvention.Cdecl)]
-    public static extern OttoStatusCode OttoProxyKonfigurationSetzen(
-        IntPtr instanz,
-        [MarshalAs(UnmanagedType.LPStruct)] OttoProxyKonfiguration proxyKonfiguration);
-
-    [DllImport("otto", CallingConvention = CallingConvention.Cdecl)]
     public static extern OttoStatusCode OttoEmpfangBeginnen(
         IntPtr instanz,
         [MarshalAs(UnmanagedType.LPStr)] string objektId,
@@ -380,21 +435,13 @@ internal static class Native
     [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
         ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr OttoHoleFehlertext(OttoStatusCode statuscode);
-}
 
-[StructLayout(LayoutKind.Sequential)]
-public class OttoProxyKonfiguration
-{
-    [MarshalAs(UnmanagedType.I4)]
-    public Int32 version;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string url;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string benutzerName;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string benutzerPassword;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string authenifizierungsMethode;
+    [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
+        ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.Cdecl)]
+    public static extern OttoStatusCode OttoEinstellungSetzen(
+        IntPtr instanz,
+        [MarshalAs(UnmanagedType.LPStr)] string einstellungName,
+        [MarshalAs(UnmanagedType.LPStr)] string einstellungWert);
 }
 
 public enum OttoStatusCode
@@ -510,7 +557,7 @@ internal static class Program
         string pathLog = Environment.GetEnvironmentVariable("PATH_LOG") ?? ".";
         if (string.IsNullOrEmpty(proxyUrl))
         {
-            proxyUrl = Environment.GetEnvironmentVariable("PROXY_URL") ?? null;
+            proxyUrl = Environment.GetEnvironmentVariable("PROXY_URL");
         }
 
         if (memorySizeAllocation is > 0 and <= 10485760)
