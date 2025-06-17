@@ -50,7 +50,7 @@ internal class CsottoBlockwise : IDisposable
         }
 
         // Set timeouts, if provided in environment variables
-        string envTimeoutConnect = Environment.GetEnvironmentVariable("TIMEOUT_CONNECT") ?? null;
+        string envTimeoutConnect = Environment.GetEnvironmentVariable("TIMEOUT_CONNECT");
         if (!string.IsNullOrEmpty(envTimeoutConnect))
         {
             OttoStatusCode statusCodeSetTimeoutConnect = Native.OttoEinstellungSetzen(instance, "transfer.connect_timeout", envTimeoutConnect);
