@@ -19,6 +19,28 @@ internal static class Common
         Console.WriteLine("[CODE]  " + (int)code);
         return (int)code;
     }
+
+    public static void Configure(
+        IntPtr instance,
+        string envVariableName,
+        string settingName,
+        string settingValue = null,
+        string errorMessage = "Could not set Otto setting. Check otto.log for details.")
+    {
+        if (string.IsNullOrEmpty(settingValue))
+        {
+            settingValue = Environment.GetEnvironmentVariable(envVariableName);
+        }
+        
+        if (!string.IsNullOrEmpty(settingValue))
+        {
+            OttoStatusCode statusCode = Native.OttoEinstellungSetzen(instance, settingName, settingValue);
+            if (statusCode != OttoStatusCode.OTTO_OK)
+            {
+                Error(statusCode, errorMessage);
+            }
+        }
+    }
 }
 
 internal class CsottoBlockwise : IDisposable
@@ -42,33 +64,31 @@ internal class CsottoBlockwise : IDisposable
         // Set proxy URL
         if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoEinstellungSetzen(instance, "proxy.url", proxyUrl);
-            if (statusCodeProxy != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeProxy, "Could not set proxy URL. Check otto.log for details.");
-            }
+            Common.Configure(
+                instance,
+                "",
+                "proxy.url",
+                proxyUrl,
+                "Could not set Otto connect timeout. Check otto.log for details."
+            );
         }
 
         // Set timeouts, if provided in environment variables
-        string envTimeoutConnect = Environment.GetEnvironmentVariable("TIMEOUT_CONNECT");
-        if (!string.IsNullOrEmpty(envTimeoutConnect))
-        {
-            OttoStatusCode statusCodeSetTimeoutConnect = Native.OttoEinstellungSetzen(instance, "transfer.connect_timeout", envTimeoutConnect);
-            if (statusCodeSetTimeoutConnect != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeSetTimeoutConnect, "Could not set Otto connect timeout. Check otto.log for details.");
-            }
-        }
+        Common.Configure(
+            instance,
+            "TIMEOUT_CONNECT",
+            "transfer.connect_timeout",
+            null,
+            "Could not set Otto connect timeout. Check otto.log for details."
+        );
 
-        string envTimeoutIdle = Environment.GetEnvironmentVariable("TIMEOUT_IDLE") ?? null;
-        if (!string.IsNullOrEmpty(envTimeoutIdle))
-        {
-            OttoStatusCode statusCodeSetTimeoutIdle = Native.OttoEinstellungSetzen(instance, "transfer.idle_timeout", envTimeoutIdle);
-            if (statusCodeSetTimeoutIdle != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeSetTimeoutIdle, "Could not set Otto idle timeout. Check otto.log for details.");
-            }
-        }
+        Common.Configure(
+            instance,
+            "TIMEOUT_IDLE",
+            "transfer.idle_timeout",
+            null,
+            "Could not set Otto idle timeout. Check otto.log for details."
+        );
 
         // Open certificate
         OttoStatusCode statusCodeCertificateOpen = Native.OttoZertifikatOeffnen(instance, pathCertificate, certificatePassword, out certificateHandle);
@@ -221,33 +241,31 @@ internal class CsottoInMemory : IDisposable
         // Set proxy URL
         if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoEinstellungSetzen(instance, "proxy.url", proxyUrl);
-            if (statusCodeProxy != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeProxy, "Could not set proxy URL. Check otto.log for details.");
-            }
+            Common.Configure(
+                instance,
+                "",
+                "proxy.url",
+                proxyUrl,
+                "Could not set Otto connect timeout. Check otto.log for details."
+            );
         }
 
         // Set timeouts, if provided in environment variables
-        string envTimeoutConnect = Environment.GetEnvironmentVariable("TIMEOUT_CONNECT") ?? null;
-        if (!string.IsNullOrEmpty(envTimeoutConnect))
-        {
-            OttoStatusCode statusCodeSetTimeoutConnect = Native.OttoEinstellungSetzen(instance, "transfer.connect_timeout", envTimeoutConnect);
-            if (statusCodeSetTimeoutConnect != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeSetTimeoutConnect, "Could not set Otto connect timeout. Check otto.log for details.");
-            }
-        }
+        Common.Configure(
+            instance,
+            "TIMEOUT_CONNECT",
+            "transfer.connect_timeout",
+            null,
+            "Could not set Otto connect timeout. Check otto.log for details."
+        );
 
-        string envTimeoutIdle = Environment.GetEnvironmentVariable("TIMEOUT_IDLE") ?? null;
-        if (!string.IsNullOrEmpty(envTimeoutIdle))
-        {
-            OttoStatusCode statusCodeSetTimeoutIdle = Native.OttoEinstellungSetzen(instance, "transfer.idle_timeout", envTimeoutIdle);
-            if (statusCodeSetTimeoutIdle != OttoStatusCode.OTTO_OK)
-            {
-                Common.Error(statusCodeSetTimeoutIdle, "Could not set Otto idle timeout. Check otto.log for details.");
-            }
-        }
+        Common.Configure(
+            instance,
+            "TIMEOUT_IDLE",
+            "transfer.idle_timeout",
+            null,
+            "Could not set Otto idle timeout. Check otto.log for details."
+        );
 
         // Create content buffer
         OttoStatusCode statusCodeContentHandleCreate = Native.OttoRueckgabepufferErzeugen(instance, out contentHandle);
@@ -539,7 +557,7 @@ internal static class Program
         string pathLog = Environment.GetEnvironmentVariable("PATH_LOG") ?? ".";
         if (string.IsNullOrEmpty(proxyUrl))
         {
-            proxyUrl = Environment.GetEnvironmentVariable("PROXY_URL") ?? null;
+            proxyUrl = Environment.GetEnvironmentVariable("PROXY_URL");
         }
 
         if (memorySizeAllocation is > 0 and <= 10485760)
