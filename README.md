@@ -11,13 +11,11 @@ An example of the Otto library implementation in C#.
 
 ## Why?
 
-In May 2024, ELSTER introduced a new library called Otto, designed for downloading objects from OTTER (Object Storage in ELSTER). ELSTER took this initiative because the existing solution had reached its limitations. Alongside Otto, a new version of Datenabholung v31 was also released.
+ELSTER introduced a library called Otto, designed for downloading objects from OTTER (Object Storage in ELSTER). As of June 9th, 2025, the only supported version of ERiC-Datenabholung is v31. Part of the retrieval process is downloading data from the OTTER servers, which can be done with Otto.
 
-The current method of data retrieval using ERiC was replaced on the client-side with ERiC version 41.2 in November 2024, which supports solely Datenabholung v31. On the server-side, the transition will occur with the planned annual minimal version increase on **June 9th, 2025**. After this date, only ERiC version 41.2 or higher with Datenabholung v31 will be supported.
+Most software developers using ERiC-Datenabholung need to implement Otto in their productive systems.
 
-As a result, most software developers currently using ERiC Datenabholung will need to implement Otto in their production systems by the June 2025.
-
-This demo intends to simplify the transition and reduce implementation time.
+This demo intends to reduce implementation time.
 
 ## Usage
 
@@ -46,13 +44,13 @@ csotto -u c48737b3-adfe-4e87-925c-7c362e00a416 -e pdf # DivaBescheidESt
 
 ## Vendor
 
-You need the official ELSTER Otto library. Download the ERiC package >= v40 for your platform from the [ELSTER developer area](https://www.elster.de/elsterweb/entwickler/infoseite/eric), unzip it and place it at a desired path. Feel free to place it in `./vendor/`. You need two libraries: `otto` and `eSigner` (platform dependent naming: `(lib)otto.{so|dylib|dll}` and `(lib)eSigner.{so|dylib|dll}`).
+You need the official ELSTER Otto library. Download the ERiC package >= v42.1 for your platform from the [ELSTER developer area](https://www.elster.de/elsterweb/entwickler/infoseite/eric), unzip it and place it at a desired path. Feel free to place it in `./vendor/`. You need two libraries: `otto` and `eSigner` (platform dependent naming: `(lib)otto.{so|dylib|dll}` and `(lib)eSigner.{so|dylib|dll}`).
 
 > [!NOTE]  
 > The ERiC package, especially the included there libraries are subject to a separate license agreement (presented before download in the ELSTER developer area and included in the ERiC package itself).
 
 > [!TIP]  
-> Choose the right library for the platform you compile and run on. Recommended Otto version to use: 41.5 with eSigner 62.0.0.5
+> Choose the right library for the platform you compile and run on. Recommended Otto version to use: 42.1 with eSigner 62.0.0.5
 
 ## Build with Docker
 
@@ -67,7 +65,7 @@ make docker-build
 
 ## Build otherwise
 
-Build with a tool of your choice and set up the project accordingly. Just don't forget to place the Otto library where the build solution can find it. For example `PATH`, typical places where libraries are searched on your system or just place it next to the build executable. 
+Build with a tool of your choice and set up the project accordingly. Just don't forget to place the `otto` library where the build solution can find it. For example `PATH`, typical places where libraries are searched on your system or just place it next to the build executable. 
 
 Here is an example howto run `csotto` locally on macOS after installing [.NET SDK 8.0](https://learn.microsoft.com/en-us/dotnet/core/install/macos).
 
@@ -84,7 +82,7 @@ cd csotto
 # Build with dotnet
 dotnet build
 
-# Run `csotto`, provide objectUuid with -u option, DYLD_LIBRARY_PATH pointing to Otto library and your DEVELOPER_ID inline
+# Run `csotto`, provide objectUuid with -u option, DYLD_LIBRARY_PATH pointing to `otto` library and your DEVELOPER_ID inline
 DYLD_LIBRARY_PATH="./vendor" DEVELOPER_ID="00000" dotnet run -u 468a69d4-0151-4681-9e8d-fcd87873d550
 ```
 
@@ -98,11 +96,15 @@ DYLD_LIBRARY_PATH="./vendor" DEVELOPER_ID="00000" dotnet run -u 468a69d4-0151-46
 
 All supported environment variables are listed in [`.env.example`](.env.example). Feel free to copy them to `.env`, adjust accordingly and source for usage.
 
+## Otto settings
+
+Some Otto settings within this demo can be configured with environment variables. Others can be set in an `otto.ini` file placed next to the `otto` library. See [`otto.ini-dist`](vendor/otto.ini-dist) for a list of all currently known Otto settings. They are described in the chapter 4.1.4 of ERiC-Entwicklerhandbuch.pdf inside official documentation of the [ERiC package](#vendor).
+
 ## Download modes
 
 The demo showcases two methods for downloading objects: blockwise (default) and in-memory. OTTER and Otto operate by design by streaming data and forwarding it to the desired storage blockwise. That is the optimal and memory-efficient way for large files. ELSTER engineers wrapped all the necessary calls and the download workflow in one function: `OttoDatenAbholen()`, which simplifies the implementation and temporarily stores the complete object in memory.
 
-This demo can operate in both modes. To download in-memory, add the option `-m` with a value exceeding `0` and not exceeding `10485760` Bytes (10 MiB). It is recommended to use the in-memory mode with objects where the final size is known and does not exceed the arbitrarily set size of 10485760 Bytes.
+This demo can operate in both modes. To download in-memory, add the option `-m` with a value exceeding `0` and not exceeding `10485760` Bytes (10 MiB). It is recommended to use the in-memory mode with objects where the final size is known and does not exceed the arbitrarily set size of 10.485.760 Bytes.
 
 > [!IMPORTANT]  
 > `-m` sets the minimal allocated memory size. When the object is larger than the set size, Otto allocates as much as needed and as much as available memory. Use at your own risk.

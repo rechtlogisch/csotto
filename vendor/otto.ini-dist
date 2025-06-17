@@ -1,0 +1,8 @@
+#log.ebene=1
+#proxy.auth=Any
+#proxy.benutzername=user
+#proxy.benutzerpasswort=secret
+#proxy.url=http://my.pro.xy:1234
+#transfer.connect_timeout=30
+#transfer.idle_timeout=30
+#transfer.netz=ndb

@@ -39,13 +39,34 @@ internal class CsottoBlockwise : IDisposable
             Common.Error(statusCodeInstanceCreate, "Could not create an Otto instance. Check otto.log for details.");
         }
 
-        // Set proxy
+        // Set proxy URL
         if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
+            OttoStatusCode statusCodeProxy = Native.OttoEinstellungSetzen(instance, "proxy.url", proxyUrl);
             if (statusCodeProxy != OttoStatusCode.OTTO_OK)
             {
-                Common.Error(statusCodeProxy, "Could not set proxy configuration. Check otto.log for details.");
+                Common.Error(statusCodeProxy, "Could not set proxy URL. Check otto.log for details.");
+            }
+        }
+
+        // Set timeouts, if provided in environment variables
+        string envTimeoutConnect = Environment.GetEnvironmentVariable("TIMEOUT_CONNECT") ?? null;
+        if (!string.IsNullOrEmpty(envTimeoutConnect))
+        {
+            OttoStatusCode statusCodeSetTimeoutConnect = Native.OttoEinstellungSetzen(instance, "transfer.connect_timeout", envTimeoutConnect);
+            if (statusCodeSetTimeoutConnect != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error(statusCodeSetTimeoutConnect, "Could not set Otto connect timeout. Check otto.log for details.");
+            }
+        }
+
+        string envTimeoutIdle = Environment.GetEnvironmentVariable("TIMEOUT_IDLE") ?? null;
+        if (!string.IsNullOrEmpty(envTimeoutIdle))
+        {
+            OttoStatusCode statusCodeSetTimeoutIdle = Native.OttoEinstellungSetzen(instance, "transfer.idle_timeout", envTimeoutIdle);
+            if (statusCodeSetTimeoutIdle != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error(statusCodeSetTimeoutIdle, "Could not set Otto idle timeout. Check otto.log for details.");
             }
         }
 
@@ -197,13 +218,34 @@ internal class CsottoInMemory : IDisposable
             Common.Error(statusCodeInstanceCreate, "Could not create an Otto instance. Check otto.log for details.");
         }
 
-        // Set proxy
+        // Set proxy URL
         if (!string.IsNullOrEmpty(proxyUrl))
         {
-            OttoStatusCode statusCodeProxy = Native.OttoProxyKonfigurationSetzen(instance, new OttoProxyKonfiguration { version = 1, url = proxyUrl });
+            OttoStatusCode statusCodeProxy = Native.OttoEinstellungSetzen(instance, "proxy.url", proxyUrl);
             if (statusCodeProxy != OttoStatusCode.OTTO_OK)
             {
-                Common.Error(statusCodeProxy, "Could not set proxy configuration. Check otto.log for details.");
+                Common.Error(statusCodeProxy, "Could not set proxy URL. Check otto.log for details.");
+            }
+        }
+
+        // Set timeouts, if provided in environment variables
+        string envTimeoutConnect = Environment.GetEnvironmentVariable("TIMEOUT_CONNECT") ?? null;
+        if (!string.IsNullOrEmpty(envTimeoutConnect))
+        {
+            OttoStatusCode statusCodeSetTimeoutConnect = Native.OttoEinstellungSetzen(instance, "transfer.connect_timeout", envTimeoutConnect);
+            if (statusCodeSetTimeoutConnect != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error(statusCodeSetTimeoutConnect, "Could not set Otto connect timeout. Check otto.log for details.");
+            }
+        }
+
+        string envTimeoutIdle = Environment.GetEnvironmentVariable("TIMEOUT_IDLE") ?? null;
+        if (!string.IsNullOrEmpty(envTimeoutIdle))
+        {
+            OttoStatusCode statusCodeSetTimeoutIdle = Native.OttoEinstellungSetzen(instance, "transfer.idle_timeout", envTimeoutIdle);
+            if (statusCodeSetTimeoutIdle != OttoStatusCode.OTTO_OK)
+            {
+                Common.Error(statusCodeSetTimeoutIdle, "Could not set Otto idle timeout. Check otto.log for details.");
             }
         }
 
@@ -325,11 +367,6 @@ internal static class Native
 
 
     [DllImport("otto", CallingConvention = CallingConvention.Cdecl)]
-    public static extern OttoStatusCode OttoProxyKonfigurationSetzen(
-        IntPtr instanz,
-        [MarshalAs(UnmanagedType.LPStruct)] OttoProxyKonfiguration proxyKonfiguration);
-
-    [DllImport("otto", CallingConvention = CallingConvention.Cdecl)]
     public static extern OttoStatusCode OttoEmpfangBeginnen(
         IntPtr instanz,
         [MarshalAs(UnmanagedType.LPStr)] string objektId,
@@ -380,21 +417,13 @@ internal static class Native
     [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
         ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr OttoHoleFehlertext(OttoStatusCode statuscode);
-}
 
-[StructLayout(LayoutKind.Sequential)]
-public class OttoProxyKonfiguration
-{
-    [MarshalAs(UnmanagedType.I4)]
-    public Int32 version;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string url;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string benutzerName;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string benutzerPassword;
-    [MarshalAs(UnmanagedType.LPStr)]
-    public string authenifizierungsMethode;
+    [DllImport("otto", CharSet = CharSet.Ansi, BestFitMapping = true,
+        ThrowOnUnmappableChar = false, CallingConvention = CallingConvention.Cdecl)]
+    public static extern OttoStatusCode OttoEinstellungSetzen(
+        IntPtr instanz,
+        [MarshalAs(UnmanagedType.LPStr)] string einstellungName,
+        [MarshalAs(UnmanagedType.LPStr)] string einstellungWert);
 }
 
 public enum OttoStatusCode
