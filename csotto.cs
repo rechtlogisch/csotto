@@ -153,7 +153,7 @@ internal class CsottoBlockwise : IDisposable
                 // Safety: Marshal.Copy expects int for length
                 if (contentSize > int.MaxValue)
                 {
-                    throw new InvalidOperationException("contentSize to big for Marshal.Copy: " + contentSize);
+                    throw new InvalidOperationException("contentSize too big for Marshal.Copy: " + contentSize);
                 }
 
                 byte[] contentBlock = new byte[(int)contentSize];
