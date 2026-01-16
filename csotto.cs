@@ -158,7 +158,6 @@ internal class CsottoBlockwise : IDisposable
                 byte[] contentBlock = new byte[(int)contentSize];
                 Marshal.Copy(Native.OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
 
-                // Collect bytes (do not decode UTF-8 per chunk)
                 ms.Write(contentBlock, 0, contentBlock.Length);
             }
 
