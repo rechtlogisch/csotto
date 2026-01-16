@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace csotto;
 
@@ -131,25 +132,42 @@ internal class CsottoBlockwise : IDisposable
 
         // Continue download
         OttoStatusCode statusCodeDownloadContinue;
-        do
+
+        // Collect bytes (do not decode UTF-8 per chunk), to avoid corrupting data
+        using (var ms = new MemoryStream())
         {
-            statusCodeDownloadContinue = Native.OttoEmpfangFortsetzen(downloadHandle, contentHandle);
-            if (statusCodeDownloadContinue != OttoStatusCode.OTTO_OK)
+            while (true)
             {
-                break;
+                statusCodeDownloadContinue = Native.OttoEmpfangFortsetzen(downloadHandle, contentHandle);
+                if (statusCodeDownloadContinue != OttoStatusCode.OTTO_OK)
+                {
+                    break;
+                }
+
+                ulong contentSize = Native.OttoRueckgabepufferGroesse(contentHandle);
+                if (contentSize <= 0)
+                {
+                    break;
+                }
+
+                // Safety: Marshal.Copy expects int for length
+                if (contentSize > int.MaxValue)
+                {
+                    throw new InvalidOperationException("contentSize to big for Marshal.Copy: " + contentSize);
+                }
+
+                byte[] contentBlock = new byte[(int)contentSize];
+                Marshal.Copy(Native.OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
+
+                // Collect bytes (do not decode UTF-8 per chunk)
+                ms.Write(contentBlock, 0, contentBlock.Length);
             }
 
-            ulong contentSize = Native.OttoRueckgabepufferGroesse(contentHandle);
-            if (contentSize <= 0)
-            {
-                break;
-            }
-
-            Console.WriteLine("[INFO]  Downloaded: " + contentSize + " Bytes");
-            byte[] contentBlock = new byte[contentSize];
-            Marshal.Copy(Native.OttoRueckgabepufferInhalt(contentHandle), contentBlock, 0, (int)contentSize);
-            file.Write(contentBlock, 0, (int)contentSize);
-        } while (true);
+            // Write raw bytes to avoid corrupting binary data (e.g., PDFs)
+            byte[] downloadedBytes = ms.ToArray();
+            Console.WriteLine("[INFO]  Downloaded: " + downloadedBytes.Length + " bytes");
+            file.Write(downloadedBytes, 0, downloadedBytes.Length);
+        }
 
         file.Close();
 
